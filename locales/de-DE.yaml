@@ -1,0 +1,12 @@
+_version: 1
+conversion_factor: Wechselkurs
+detour_kosts: Kosten für Umweg
+fuel_amount: Treibstoffmenge
+fuel_costs_far: Treibstoffkosten Entfernte Tanke
+fuel_costs_near: Treibstoffkosten nahe Tanke
+fuel_usage: Spritverbrauch
+fueling_detour_km: Umweg zur witeren Tanke
+price_far: Preis weitere Tanke
+price_far_converted: Umgerechneter Preis weitere Tanke
+price_nearby: Preis nähere Tanke
+savings: Ersparnise

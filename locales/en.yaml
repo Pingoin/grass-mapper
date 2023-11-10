@@ -1,0 +1,12 @@
+_version: 1
+price_nearby: Price nearby
+price_far: Fuel price far
+conversion_factor: Conversion factor
+price_far_converted: Price of far fue converted
+fuel_usage: Fuel usage
+fueling_detour_km: Detour to cheaper fuelstation
+fuel_amount: Fuel amount
+fuel_costs_near: Fuel Costs nearby
+fuel_costs_far: Fuel Costs far
+detour_kosts: detour kosts
+savings: savings
