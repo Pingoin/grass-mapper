@@ -33,7 +33,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
-        run: trunk build --release --public-url /fuel-app/
+        run: trunk build --release --public-url /grass-mapper/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
