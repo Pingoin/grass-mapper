@@ -346,6 +346,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sycamore",
+ "wasm-bindgen",
  "web-sys",
 ]
 

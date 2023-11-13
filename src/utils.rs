@@ -1,8 +1,11 @@
 use gloo_net::http::Request;
-use sycamore::{prelude::*, web::html::nav};
-use web_sys::{window};
+use sycamore::prelude::*;
+use web_sys::{window, Position, console};
 use serde::{ Deserialize, Serialize};
+use wasm_bindgen::{closure::Closure, JsCast};
 
+
+#[allow(dead_code)]
 pub async fn fetch<Fn>(path: &str, fun: Fn)
 where
     Fn: FnOnce(String),
@@ -101,3 +104,27 @@ where
     result
 }
 
+pub fn get_position (){
+    if let Some(win) = window() {
+        if let Ok(geoloc) =win.navigator().geolocation()  {
+            let cb: Closure<dyn Fn(Position)>  = Closure::new(move |data:Position| { 
+                let coords=data.coords();
+                let lat=coords.latitude();
+                let long= coords.longitude();
+                let accuracy=coords.accuracy();
+                log_to_browser(format!("long: {}\nlat: {}\nacc: {}",long,lat, accuracy))
+            });
+            //let cb = cb.as_ref().unchecked_ref();
+            if let Ok(_pos) = geoloc.watch_position(cb.as_ref().unchecked_ref()) {
+                
+            }
+            cb.forget();
+        }
+    }
+}
+
+
+
+fn log_to_browser(log_msg: String) {
+    console::log_1(&log_msg.into());
+}
