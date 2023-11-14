@@ -1,8 +1,7 @@
 use gloo_net::http::Request;
 use sycamore::prelude::*;
-use web_sys::{window, Position, console};
+use web_sys::{window, console};
 use serde::{ Deserialize, Serialize};
-use wasm_bindgen::{closure::Closure, JsCast};
 
 
 #[allow(dead_code)]
@@ -51,6 +50,7 @@ pub fn get_lang_code()->String{
     result
 }
 
+#[allow(dead_code)]
 pub fn get_stored_text(key: &str, default: String) -> String {
     let mut result = default;
     if let Some(win) = window() {
@@ -63,6 +63,7 @@ pub fn get_stored_text(key: &str, default: String) -> String {
     result
 }
 
+#[allow(dead_code)]
 pub fn set_stored_text(key: &str, value: String) {
     if let Some(win) = window() {
         if let Ok(Some(stor)) = win.local_storage() {
@@ -71,6 +72,7 @@ pub fn set_stored_text(key: &str, value: String) {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_stored_item<T>(key: &str, default_value: T) -> T
 where
     T: for<'a> Deserialize<'a>,
@@ -86,6 +88,7 @@ where
     result
 }
 
+#[allow(dead_code)]
 pub fn set_stored_item<T>(key: &str, value: T)
 where
     T: Serialize,
@@ -95,6 +98,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub fn create_stored_signal<T>(key: String, default_value: T) -> Signal<T>
 where
     T: for<'a> Deserialize<'a> + Serialize + Clone,
@@ -104,27 +108,7 @@ where
     result
 }
 
-pub fn get_position (){
-    if let Some(win) = window() {
-        if let Ok(geoloc) =win.navigator().geolocation()  {
-            let cb: Closure<dyn Fn(Position)>  = Closure::new(move |data:Position| { 
-                let coords=data.coords();
-                let lat=coords.latitude();
-                let long= coords.longitude();
-                let accuracy=coords.accuracy();
-                log_to_browser(format!("long: {}\nlat: {}\nacc: {}",long,lat, accuracy))
-            });
-            //let cb = cb.as_ref().unchecked_ref();
-            if let Ok(_pos) = geoloc.watch_position(cb.as_ref().unchecked_ref()) {
-                
-            }
-            cb.forget();
-        }
-    }
-}
-
-
-
-fn log_to_browser(log_msg: String) {
+#[allow(dead_code)]
+pub fn log_to_browser(log_msg: String) {
     console::log_1(&log_msg.into());
 }
