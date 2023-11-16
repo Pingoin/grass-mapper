@@ -8,6 +8,14 @@ use sycamore::prelude::*;
 use utils::get_lang_code;
 use gloo_timers::future::TimeoutFuture;
 
+use gloo_events::EventListener;
+
+use leaflet::{
+    Circle, Control, ControlOptions, LatLng,  Map, MapOptions,  TileLayer,
+};
+use wasm_bindgen::JsCast;
+use web_sys::{console, window, HtmlAnchorElement};
+
 use crate::utils::create_stored_signal;
 mod utils;
 mod position;
@@ -31,31 +39,21 @@ fn main() {
 fn App<G: Html>() -> View<G> {
     
     start_web_data();
-    let longitude:Signal<f64> = create_stored_signal(String::from("long"),0.0f64);
-    let mower_width:Signal<f64> = create_stored_signal(String::from("mower_with"),0.0f64);
+    let longitude = create_signal(0.0f64);
+    let mower_width = create_stored_signal(String::from("mower_with"),0.0f64);
     let latitude =
-        create_stored_signal(String::from("lat"), 0.0f64);
+        create_signal( 0.0f64);
     //let accuracy = create_stored_signal(String::from("accuracy"), 0.0f64);
-    let altitude = create_stored_signal(String::from("altitude"), 0.0f64);
+    let altitude = create_signal( 0.0f64);
 
 
 
-    spawn_local_scoped( async move {
-        loop {
-            if let Some(pos)=get_global_position(){
-                longitude.set(pos.longitude);
-                latitude.set(pos.latitude);
-                altitude.set(pos.altitude);
-            };
 
-            
-   
-            TimeoutFuture::new(100).await;
-        }
-    });
+    let  options = MapOptions::default();
+    //options.set_max_zoom(25.0);
 
 
-    view! {
+   let result= view! {
         header{}
         main{
             article(class="triple-column"){
@@ -64,11 +62,41 @@ fn App<G: Html>() -> View<G> {
                 ValueOutput(lable=t!("latitude"),value=*latitude){""}
                 ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
             }
+            article{
+                div(id="map"){}
+            }
         }
         footer{
 
         }
-    }
+    };
+
+
+
+    spawn_local_scoped( async move {
+        let map = Map::new("map", &options);
+         add_tile_layer(&map);
+         add_control(&map);
+        loop {
+
+            if let Some(pos)=get_global_position(){
+                longitude.set(pos.longitude);
+                latitude.set(pos.latitude);
+                altitude.set(pos.altitude);
+
+                map.set_view(&LatLng::new(pos.latitude, pos.longitude), 18.0);
+                add_circle(&map, pos.latitude, pos.longitude,1.0);
+            };
+
+            
+   
+            TimeoutFuture::new(1000).await;
+        }
+    });
+
+
+
+    result
 }
 
 
@@ -110,4 +138,58 @@ fn ValueInput<G: Html>(props: ValueInputProps<G>) -> View<G> {
             input(bind:valueAsNumber=props.value, type="number", min="0", step="0.1",maxlength="4",size="8")
             div{(children)}
     }
+}
+
+fn add_control(map: &Map) {
+    let mut options = ControlOptions::default();
+    options.set_position("topleft");
+    let control_button = Control::new(&options);
+
+    // This callback must return a HTML div representing the control button.
+    let on_add = |_: &_| {
+        let document = window()
+            .expect("Unable to get browser window")
+            .document()
+            .expect("Unable to get browser document");
+
+        let container = document
+            .create_element("div")
+            .expect("Unable to create div");
+
+        container.set_class_name("leaflet-bar");
+
+        let link = document
+            .create_element("a")
+            .expect("Unable to create link")
+            .dyn_into::<HtmlAnchorElement>()
+            .expect("Unable to cast to HtmlAnchorElement");
+
+        link.set_href("#");
+        link.set_inner_html("⬤");
+        link.set_title("Create a new foobar.");
+
+        let on_click = EventListener::new(&link, "click", |_| {
+            console::log_1(&"Control button click.".into());
+        });
+
+        on_click.forget();
+
+        container
+            .append_child(&link)
+            .expect("Unable to add child element");
+
+        container.dyn_into().unwrap()
+    };
+
+    control_button.on_add(on_add);
+    control_button.add_to(map);
+}
+
+fn add_tile_layer(map: &Map) {
+    TileLayer::new("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").add_to(map);
+}
+
+
+fn add_circle(map: &Map,lat:f64,lng:f64,radius:f64) {
+    Circle::new_with_radius(&LatLng::new(lat, lng),radius).add_to(map);
 }

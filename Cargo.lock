@@ -304,6 +304,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gloo-events"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68b107f8abed8105e4182de63845afcc7b69c098b7852a813ea7462a320992fc"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "gloo-net"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -312,7 +322,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-sink",
- "gloo-utils",
+ "gloo-utils 0.2.0",
  "http",
  "js-sys",
  "pin-project",
@@ -338,6 +348,19 @@ dependencies = [
 
 [[package]]
 name = "gloo-utils"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "037fcb07216cb3a30f7292bd0176b050b7b9a052ba830ef7d5d65f6dc64ba58e"
+dependencies = [
+ "js-sys",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "gloo-utils"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b5555354113b18c547c1d3a98fbf7fb32a9ff4f6fa112ce823a21641a0ba3aa"
@@ -353,8 +376,12 @@ dependencies = [
 name = "grass-mapper"
 version = "0.1.0"
 dependencies = [
+ "gloo-events",
  "gloo-net",
  "gloo-timers",
+ "gloo-utils 0.1.7",
+ "js-sys",
+ "leaflet",
  "rust-i18n",
  "serde",
  "serde_json",
@@ -474,6 +501,18 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "leaflet"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48e5fa1d484cd483b16a40ce3325cfa21b851337a05a98c3129fdd5f26f5aefe"
+dependencies = [
+ "js-sys",
+ "paste",
+ "wasm-bindgen",
+ "web-sys",
+]
 
 [[package]]
 name = "libc"
