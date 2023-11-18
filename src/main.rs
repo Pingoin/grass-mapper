@@ -4,7 +4,6 @@ use rust_i18n::t;
 
 rust_i18n::i18n!("locales", fallback = "en");
 use gloo_timers::future::TimeoutFuture;
-use serde::{Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 use utils::get_lang_code;
@@ -65,7 +64,7 @@ fn App<G: Html>() -> View<G> {
     };
 
     spawn_local_scoped(async move {
-        let map = Map::new("map", &options);
+        let map = Map::new("map", &options).locate();
         add_tile_layer(&map);
         add_control(&map);
         let mut last_pos = ECEF::new(0.0f32, 0.0f32, 0.0f32);
@@ -78,7 +77,7 @@ fn App<G: Html>() -> View<G> {
                 altitude.set(wgs.altitude() as f64);
 
                 if pos.distance(&last_pos) > 5.0 {
-                    map.set_view(
+                   map.set_view(
                         &LatLng::new(
                             wgs.latitude_degrees() as f64,
                             wgs.longitude_degrees() as f64,
@@ -94,7 +93,6 @@ fn App<G: Html>() -> View<G> {
                     last_pos = pos;
                 }
             };
-
             TimeoutFuture::new(1000).await;
         }
     });
@@ -102,11 +100,6 @@ fn App<G: Html>() -> View<G> {
     result
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
-struct Currency {
-    code: String,
-    rate: f64,
-}
 
 #[derive(Props)]
 pub struct ValueInputProps<G: Html> {
