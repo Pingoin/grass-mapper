@@ -1,31 +1,30 @@
+use nav_types::{ECEF, WGS84};
 // You must import in each files when you wants use `t!` macro.
 use rust_i18n::t;
 
 rust_i18n::i18n!("locales", fallback = "en");
+use gloo_timers::future::TimeoutFuture;
 use serde::{Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 use utils::get_lang_code;
-use gloo_timers::future::TimeoutFuture;
 
 use gloo_events::EventListener;
 
-use leaflet::{
-    Circle, Control, ControlOptions, LatLng,  Map, MapOptions,  TileLayer,
-};
+use leaflet::{Circle, Control, ControlOptions, LatLng, Map, MapOptions, TileLayer};
 use wasm_bindgen::JsCast;
 use web_sys::{console, window, HtmlAnchorElement};
 
 use crate::utils::create_stored_signal;
-mod utils;
-mod position;
 mod mutex_box;
+mod position;
+mod utils;
 
-use crate::position::{start_web_data, get_global_position};
+use crate::position::{get_global_position, start_web_data};
 
 fn main() {
-    let lang=get_lang_code();
-    let lang: Vec<&str>=lang.as_str().split("-").collect();
+    let lang = get_lang_code();
+    let lang: Vec<&str> = lang.as_str().split("-").collect();
     rust_i18n::set_locale(lang[0]);
 
     sycamore::render(|| {
@@ -37,23 +36,17 @@ fn main() {
 
 #[component]
 fn App<G: Html>() -> View<G> {
-    
     start_web_data();
     let longitude = create_signal(0.0f64);
-    let mower_width = create_stored_signal(String::from("mower_with"),0.0f64);
-    let latitude =
-        create_signal( 0.0f64);
+    let mower_width = create_stored_signal(String::from("mower_with"), 0.0f64);
+    let latitude = create_signal(0.0f64);
     //let accuracy = create_stored_signal(String::from("accuracy"), 0.0f64);
-    let altitude = create_signal( 0.0f64);
+    let altitude = create_signal(0.0f64);
 
-
-
-
-    let  options = MapOptions::default();
+    let options = MapOptions::default();
     //options.set_max_zoom(25.0);
 
-
-   let result= view! {
+    let result = view! {
         header{}
         main{
             article(class="triple-column"){
@@ -71,34 +64,43 @@ fn App<G: Html>() -> View<G> {
         }
     };
 
-
-
-    spawn_local_scoped( async move {
+    spawn_local_scoped(async move {
         let map = Map::new("map", &options);
-         add_tile_layer(&map);
-         add_control(&map);
+        add_tile_layer(&map);
+        add_control(&map);
+        let mut last_pos = ECEF::new(0.0f32, 0.0f32, 0.0f32);
         loop {
+            if let Some(pos) = get_global_position() {
+                let wgs = WGS84::from(pos);
 
-            if let Some(pos)=get_global_position(){
-                longitude.set(pos.longitude);
-                latitude.set(pos.latitude);
-                altitude.set(pos.altitude);
+                longitude.set(wgs.longitude_degrees() as f64);
+                latitude.set(wgs.latitude_degrees() as f64);
+                altitude.set(wgs.altitude() as f64);
 
-                map.set_view(&LatLng::new(pos.latitude, pos.longitude), 18.0);
-                add_circle(&map, pos.latitude, pos.longitude,1.0);
+                if pos.distance(&last_pos) > 5.0 {
+                    map.set_view(
+                        &LatLng::new(
+                            wgs.latitude_degrees() as f64,
+                            wgs.longitude_degrees() as f64,
+                        ),
+                        18.0,
+                    );
+                    add_circle(
+                        &map,
+                        wgs.latitude_degrees() as f64,
+                        wgs.longitude_degrees() as f64,
+                        mower_width.get(),
+                    );
+                    last_pos = pos;
+                }
             };
 
-            
-   
             TimeoutFuture::new(1000).await;
         }
     });
 
-
-
     result
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
 struct Currency {
@@ -189,7 +191,6 @@ fn add_tile_layer(map: &Map) {
     TileLayer::new("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").add_to(map);
 }
 
-
-fn add_circle(map: &Map,lat:f64,lng:f64,radius:f64) {
-    Circle::new_with_radius(&LatLng::new(lat, lng),radius).add_to(map);
+fn add_circle(map: &Map, lat: f64, lng: f64, radius: f64) {
+    Circle::new_with_radius(&LatLng::new(lat, lng), radius).add_to(map);
 }
