@@ -2,6 +2,8 @@ use crate::mutex_box::MutexBox;
 use nav_types::{ECEF, WGS84};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{window, Position};
+mod position_fusion;
+use position_fusion::PositionFusion;
 
 static POSITIOM_FUSION: MutexBox<PositionFusion> = MutexBox::new_inited(PositionFusion::new());
 
@@ -33,32 +35,6 @@ pub fn start_web_data() {
 }
 
 pub fn get_global_position() -> Option<ECEF<f32>> {
-    POSITIOM_FUSION.open_locked(|pos| pos.reference_position.clone(), None)
+    POSITIOM_FUSION.open_locked(|pos| pos.get_global_position().clone(), None)
 }
 
-struct PositionFusion {
-    reference_position: Option<ECEF<f32>>,
-    tracking_active: bool,
-}
-
-impl PositionFusion {
-    const fn new() -> Self {
-        PositionFusion {
-            reference_position: None,
-            tracking_active: false,
-        }
-    }
-
-    fn update_global_position(&mut self, pos: ECEF<f32>) {
-        if self.tracking_active {
-        } else {
-            self.reference_position = Some(pos);
-        }
-    }
-}
-
-impl Default for PositionFusion {
-    fn default() -> Self {
-        Self::new()
-    }
-}
