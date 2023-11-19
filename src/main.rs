@@ -20,6 +20,9 @@ mod position;
 mod utils;
 
 use crate::position::{get_global_position, start_web_data};
+use git_version::git_version;
+
+const GIT_VERSION: &str = git_version!(args = ["--always", "--tags"]);
 
 fn main() {
     let lang = get_lang_code();
@@ -46,7 +49,7 @@ fn App<G: Html>() -> View<G> {
     //options.set_max_zoom(25.0);
 
     let result = view! {
-        header{}
+        header{(GIT_VERSION)}
         main{
             article(class="triple-column"){
                 ValueInput(lable=t!("mower_width"),value=mower_width){"m"}

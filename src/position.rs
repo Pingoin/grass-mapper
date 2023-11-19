@@ -38,3 +38,6 @@ pub fn get_global_position() -> Option<ECEF<f32>> {
     POSITIOM_FUSION.open_locked(|pos| pos.get_global_position().clone(), None)
 }
 
+pub fn reset(){
+    POSITIOM_FUSION.open_locked(|pos| pos.reset(), ())
+}

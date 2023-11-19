@@ -22,3 +22,4 @@ js-sys = "0.3"
 nav-types = "0.5.2"
 eskf = {git="https://github.com/nordmoen/eskf-rs"}
 nalgebra = "0.29"
+git-version = "0.3.8"
