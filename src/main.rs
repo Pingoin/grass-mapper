@@ -1,16 +1,17 @@
 use nav_types::{ECEF, WGS84};
 // You must import in each files when you wants use `t!` macro.
+
+use position::{calc_magnetic_declination, reset};
 use rust_i18n::t;
 
 rust_i18n::i18n!("locales", fallback = "en");
+use chrono::Utc;
+use gloo_events::EventListener;
 use gloo_timers::future::TimeoutFuture;
+use leaflet::{Circle, Control, ControlOptions, LatLng, Map, MapOptions, TileLayer};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 use utils::get_lang_code;
-
-use gloo_events::EventListener;
-
-use leaflet::{Circle, Control, ControlOptions, LatLng, Map, MapOptions, TileLayer};
 use wasm_bindgen::JsCast;
 use web_sys::{console, window, HtmlAnchorElement};
 
@@ -44,6 +45,7 @@ fn App<G: Html>() -> View<G> {
     let latitude = create_signal(0.0f64);
     //let accuracy = create_stored_signal(String::from("accuracy"), 0.0f64);
     let altitude = create_signal(0.0f64);
+    let magnetic_declination=create_signal(0.0f64);
 
     let options = MapOptions::default();
     //options.set_max_zoom(25.0);
@@ -56,6 +58,7 @@ fn App<G: Html>() -> View<G> {
                 ValueOutput(lable=t!("longitude"),value=*longitude){""}
                 ValueOutput(lable=t!("latitude"),value=*latitude){""}
                 ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
+                ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}
             }
             article{
                 div(id="map"){}
@@ -80,7 +83,7 @@ fn App<G: Html>() -> View<G> {
                 altitude.set(wgs.altitude() as f64);
 
                 if pos.distance(&last_pos) > 5.0 {
-                   map.set_view(
+                    map.set_view(
                         &LatLng::new(
                             wgs.latitude_degrees() as f64,
                             wgs.longitude_degrees() as f64,
@@ -95,6 +98,8 @@ fn App<G: Html>() -> View<G> {
                     );
                     last_pos = pos;
                 }
+                let mag = calc_magnetic_declination(wgs, Utc::now().naive_utc());
+                magnetic_declination.set(mag);
             };
             TimeoutFuture::new(1000).await;
         }
@@ -102,7 +107,6 @@ fn App<G: Html>() -> View<G> {
 
     result
 }
-
 
 #[derive(Props)]
 pub struct ValueInputProps<G: Html> {
@@ -167,6 +171,7 @@ fn add_control(map: &Map) {
         link.set_title("Create a new foobar.");
 
         let on_click = EventListener::new(&link, "click", |_| {
+            reset();
             console::log_1(&"Control button click.".into());
         });
 

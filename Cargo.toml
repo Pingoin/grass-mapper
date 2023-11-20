@@ -23,3 +23,5 @@ nav-types = "0.5.2"
 eskf = {git="https://github.com/nordmoen/eskf-rs"}
 nalgebra = "0.29"
 git-version = "0.3.8"
+libgeomag = { git = "https://github.com/SanmerDev/libgeomag.git", branch = "main" }
+chrono = "0.4.31"

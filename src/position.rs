@@ -1,4 +1,6 @@
 use crate::mutex_box::MutexBox;
+use chrono::{NaiveDateTime, Datelike, Timelike};
+use libgeomag::{DateTime, GeodeticLocation, ModelExt, IGRF, WMM};
 use nav_types::{ECEF, WGS84};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{window, Position};
@@ -40,4 +42,28 @@ pub fn get_global_position() -> Option<ECEF<f32>> {
 
 pub fn reset(){
     POSITIOM_FUSION.open_locked(|pos| pos.reset(), ())
+} 
+
+pub fn calc_magnetic_declination(pos:WGS84<f32>,time:NaiveDateTime)->f64{
+    let l = GeodeticLocation::new(
+        pos.longitude_degrees() as f64,
+        pos.latitude_degrees() as f64,
+        pos.altitude() as f64 / 1000.0,
+    );
+    let t = DateTime::new(
+        time.year() as i32,
+        time.month() as i32,
+        time.day() as i32,
+        time.hour()as i32,
+        time.minute()as i32,
+        time.second()as i32,
+    );
+
+    let wmm = WMM::new(t.decimal).unwrap();
+    let igrf = IGRF::new(t.decimal).unwrap();
+
+    let m1 = wmm.single(l).d.to_degrees();
+    let m2 = igrf.single(l).d.to_degrees();
+
+    (m1+m2)/2.0
 }

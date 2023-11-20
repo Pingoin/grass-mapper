@@ -4,3 +4,5 @@ mower_width: Mäher Breite
 longitude: Längengrad
 accuracy: Genauigkeit
 altitude: Höhe
+magnetic_declination: Magnetische Deklination
+degree: Grad

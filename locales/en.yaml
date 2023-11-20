@@ -4,3 +4,5 @@ mower_width: Mower width
 longitude: Longitude
 accuracy: Accuracy
 altitude: Altitude
+magnetic_declination: Magnetic Declination
+degree: degrees

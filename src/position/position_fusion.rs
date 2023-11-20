@@ -2,6 +2,8 @@ use eskf::{Builder, ESKF};
 use nalgebra::Point3;
 use nav_types::{ECEF, ENU};
 
+use crate::utils::log_to_browser;
+
 pub(super) struct PositionFusion {
     reference_position: Option<ECEF<f32>>,
     kalman_filter: Option<ESKF>,
@@ -41,6 +43,8 @@ impl PositionFusion {
 
     pub(super) fn reset(&mut self) {
         self.reference_position = None;
+        self.kalman_filter=None;
+        log_to_browser("Position reset".to_string());
     }
 
     pub(super) fn get_global_position(&self) -> Option<ECEF<f32>> {
