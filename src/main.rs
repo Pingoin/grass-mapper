@@ -42,46 +42,68 @@ fn App<G: Html>() -> View<G> {
     let latitude = create_signal(0.0f64);
     //let accuracy = create_stored_signal(String::from("accuracy"), 0.0f64);
     let altitude = create_signal(0.0f64);
-    let magnetic_declination=create_signal(0.0f64);
-
+    let magnetic_declination = create_signal(0.0f64);
+    let menu_visible = create_signal(false);
     let options = MapOptions::default();
     //options.set_max_zoom(25.0);
 
     let result = view! {
-        header{(GIT_VERSION)}
         main{
-            article(class="triple-column"){
-                ValueInput(lable=t!("mower_width"),value=mower_width){"m"}
-                ValueOutput(lable=t!("longitude"),value=*longitude){""}
-                ValueOutput(lable=t!("latitude"),value=*latitude){""}
-                ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
-                ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}
-            }
-            article{
+            div(class="container"){
                 div(id="map"){
                     div(class="leaflet-control-container"){
+                        div(class="leaflet-bottom leaflet-left"){
+                            div(class="leaflet-control-attribution leaflet-control"){
+                                (GIT_VERSION)
+                            }
+                        }
                         div(class="leaflet-top leaflet-right"){
+                            (if !menu_visible.get(){
+                                view! {
                             div(class="leaflet-bar leaflet-control"){
-                                a (href="#", title="Create a new foobar.", on:click=|_| { 
+                                a (href="#", title="Open Menu", on:click=move |_| {
                                     reset();
-                                    log_to_browser("Klocked".to_string());
+                                    menu_visible.set(true);
                                 }){"O"}
                             }
                         }
+                        } else {
+                            view! { }
+                        })
+                        }
                     }
-
-
                 }
-            }
-        }
-        footer{
+                (if menu_visible.get() {
+                    view! {
+                        div(class="overlay"){
+                            div(class="leaflet-bar leaflet-control"){
+                                a (href="#", title="Close Menu", on:click=move |_| {
+                                  
+                                    menu_visible.set(false);
+                             
+                                }){"X"}
+                            }
+                            br{}
+                            div(class="triple-column"){
+                        ValueInput(lable=t!("mower_width"),value=mower_width){"m"}
+                        ValueOutput(lable=t!("longitude"),value=*longitude){""}
+                        ValueOutput(lable=t!("latitude"),value=*latitude){""}
+                        ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
+                        ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}}
+                    }}
+                } else {
+                    view! { } 
+                })
 
+
+            }
         }
     };
 
     spawn_local_scoped(async move {
         let map = Map::new("map", &options).locate();
         add_tile_layer(&map);
+        
         //add_control(&map);
         let mut last_pos = ECEF::new(0.0f32, 0.0f32, 0.0f32);
         loop {
