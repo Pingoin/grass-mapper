@@ -12,9 +12,9 @@ jobs:
         with:
           fetch-tags: true
       - name: Get tags
-        run: git fetch --tags origin
+        run: git pull --tags origin
       - name: describe
-        run: git describe --tags
+        run: git describe --tags --always
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
