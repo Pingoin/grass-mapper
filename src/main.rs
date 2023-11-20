@@ -6,16 +6,13 @@ use rust_i18n::t;
 
 rust_i18n::i18n!("locales", fallback = "en");
 use chrono::Utc;
-use gloo_events::EventListener;
 use gloo_timers::future::TimeoutFuture;
-use leaflet::{Circle, Control, ControlOptions, LatLng, Map, MapOptions, TileLayer};
+use leaflet::{Circle, LatLng, Map, MapOptions, TileLayer};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 use utils::get_lang_code;
-use wasm_bindgen::JsCast;
-use web_sys::{console, window, HtmlAnchorElement};
 
-use crate::utils::create_stored_signal;
+use crate::utils::{create_stored_signal, log_to_browser};
 mod mutex_box;
 mod position;
 mod utils;
@@ -61,7 +58,20 @@ fn App<G: Html>() -> View<G> {
                 ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}
             }
             article{
-                div(id="map"){}
+                div(id="map"){
+                    div(class="leaflet-control-container"){
+                        div(class="leaflet-top leaflet-right"){
+                            div(class="leaflet-bar leaflet-control"){
+                                a (href="#", title="Create a new foobar.", on:click=|_| { 
+                                    reset();
+                                    log_to_browser("Klocked".to_string());
+                                }){"O"}
+                            }
+                        }
+                    }
+
+
+                }
             }
         }
         footer{
@@ -72,7 +82,7 @@ fn App<G: Html>() -> View<G> {
     spawn_local_scoped(async move {
         let map = Map::new("map", &options).locate();
         add_tile_layer(&map);
-        add_control(&map);
+        //add_control(&map);
         let mut last_pos = ECEF::new(0.0f32, 0.0f32, 0.0f32);
         loop {
             if let Some(pos) = get_global_position() {
@@ -140,52 +150,6 @@ fn ValueInput<G: Html>(props: ValueInputProps<G>) -> View<G> {
             input(bind:valueAsNumber=props.value, type="number", min="0", step="0.1",maxlength="4",size="8")
             div{(children)}
     }
-}
-
-fn add_control(map: &Map) {
-    let mut options = ControlOptions::default();
-    options.set_position("topleft");
-    let control_button = Control::new(&options);
-
-    // This callback must return a HTML div representing the control button.
-    let on_add = |_: &_| {
-        let document = window()
-            .expect("Unable to get browser window")
-            .document()
-            .expect("Unable to get browser document");
-
-        let container = document
-            .create_element("div")
-            .expect("Unable to create div");
-
-        container.set_class_name("leaflet-bar");
-
-        let link = document
-            .create_element("a")
-            .expect("Unable to create link")
-            .dyn_into::<HtmlAnchorElement>()
-            .expect("Unable to cast to HtmlAnchorElement");
-
-        link.set_href("#");
-        link.set_inner_html("⬤");
-        link.set_title("Create a new foobar.");
-
-        let on_click = EventListener::new(&link, "click", |_| {
-            reset();
-            console::log_1(&"Control button click.".into());
-        });
-
-        on_click.forget();
-
-        container
-            .append_child(&link)
-            .expect("Unable to add child element");
-
-        container.dyn_into().unwrap()
-    };
-
-    control_button.on_add(on_add);
-    control_button.add_to(map);
 }
 
 fn add_tile_layer(map: &Map) {
