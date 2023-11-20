@@ -9,9 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-tags: true
       - name: Get tags
         run: git fetch --tags origin
-
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
