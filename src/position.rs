@@ -1,19 +1,22 @@
 use crate::mutex_box::MutexBox;
 use chrono::{NaiveDateTime, Datelike, Timelike};
 use libgeomag::{DateTime, GeodeticLocation, ModelExt, IGRF, WMM};
+use nalgebra::Vector2;
 use nav_types::{ECEF, WGS84};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{window, Position};
 mod position_fusion;
 use position_fusion::PositionFusion;
 
-static POSITIOM_FUSION: MutexBox<PositionFusion> = MutexBox::new_inited(PositionFusion::new());
+static POSITION_FUSION: MutexBox<PositionFusion> = MutexBox::new_inited(PositionFusion::new());
 
 pub fn start_web_data() {
     if let Some(win) = window() {
         if let Ok(geoloc) = win.navigator().geolocation() {
             let cb: Closure<dyn Fn(Position)> = Closure::new(move |data: Position| {
                 let coords = data.coords();
+                let speed=coords.speed();
+                let heading=coords.heading();
                 let coords = ECEF::from(WGS84::from_degrees_and_meters(
                     coords.latitude() as f32,
                     coords.longitude() as f32,
@@ -23,9 +26,16 @@ pub fn start_web_data() {
                         0.0
                     } as f32,
                 ));
-                POSITIOM_FUSION.open_locked(
+                let mut velocity:Option<Vector2<f32>>=None;
+                if let (Some(speed),Some(heading)) = (speed,heading)  {
+                    let speed_n=speed*heading.to_radians().cos();
+                    let speed_e=speed*heading.to_radians().sin();
+                   velocity=Some(Vector2::new(speed_e as f32,speed_n as f32));
+                }
+
+                POSITION_FUSION.open_locked(
                     |pos| {
-                        pos.update_global_position(coords);
+                        pos.update_global_position(coords,velocity);
                     },
                     (),
                 );
@@ -37,11 +47,11 @@ pub fn start_web_data() {
 }
 
 pub fn get_global_position() -> Option<ECEF<f32>> {
-    POSITIOM_FUSION.open_locked(|pos| pos.get_global_position().clone(), None)
+    POSITION_FUSION.open_locked(|pos| pos.get_global_position().clone(), None)
 }
 #[allow(dead_code)]
 pub fn reset(){
-    POSITIOM_FUSION.open_locked(|pos| pos.reset(), ())
+    POSITION_FUSION.open_locked(|pos| pos.reset(), ())
 } 
 
 pub fn calc_magnetic_declination(pos:WGS84<f32>,time:NaiveDateTime)->f64{

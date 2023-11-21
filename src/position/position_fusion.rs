@@ -1,5 +1,5 @@
 use eskf::{Builder, ESKF};
-use nalgebra::Point3;
+use nalgebra::{Matrix2, Point3, Vector2};
 use nav_types::{ECEF, ENU};
 
 use crate::utils::log_to_browser;
@@ -17,33 +17,34 @@ impl PositionFusion {
         }
     }
 
-    pub(super) fn update_global_position(&mut self, pos: ECEF<f32>) {
+    pub(super) fn update_global_position(
+        &mut self,
+        pos: ECEF<f32>,
+        velocity_2d: Option<Vector2<f32>>,
+    ) {
         (self.reference_position, self.kalman_filter) = if let (Some(mut kalman), Some(ref_pos)) =
             (self.kalman_filter, self.reference_position)
         {
             let rel_pos = ref_pos - pos;
             let rel_pos = Point3::new(rel_pos.east(), rel_pos.north(), rel_pos.up());
-
-            kalman
-                .observe_position(rel_pos, ESKF::variance_from_element(0.1))
-                .expect("Filter update failed");
+            observe_position(&mut kalman, rel_pos, 0.1, velocity_2d, 0.1);
             (Some(ref_pos), Some(kalman))
         } else {
             let mut kalman = Builder::new().build();
-
-            kalman
-                .observe_position(
-                    Point3::new(0.0f32, 0.0, 0.0),
-                    eskf::ESKF::variance_from_element(0.1),
-                )
-                .expect("Filter update failed");
+            observe_position(
+                &mut kalman,
+                Point3::new(0.0f32, 0.0, 0.0),
+                0.1,
+                velocity_2d,
+                0.1,
+            );
             (Some(pos), Some(kalman))
         };
     }
 
     pub(super) fn reset(&mut self) {
         self.reference_position = None;
-        self.kalman_filter=None;
+        self.kalman_filter = None;
         log_to_browser("Position reset".to_string());
     }
 
@@ -60,5 +61,28 @@ impl PositionFusion {
 impl Default for PositionFusion {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn observe_position(
+    kalman: &mut ESKF,
+    position: Point3<f32>,
+    pos_variance: f32,
+    velocity: Option<Vector2<f32>>,
+    vel_variance: f32,
+) {
+    if let Some(vel) = velocity {
+        kalman
+            .observe_position_velocity2d(
+                position,
+                ESKF::variance_from_element(pos_variance),
+                vel,
+                Matrix2::from_diagonal_element(vel_variance),
+            )
+            .expect("Filter update failed");
+    } else {
+        kalman
+            .observe_position(position, eskf::ESKF::variance_from_element(pos_variance))
+            .expect("Filter update failed");
     }
 }
