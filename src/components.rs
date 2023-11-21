@@ -1,5 +1,5 @@
 use sycamore::prelude::*;
-
+use rust_i18n::t;
 
 #[component(inline_props)]
 pub fn ValueInput<G: Html>(    
@@ -27,15 +27,24 @@ pub fn ValueOutput<G: Html>(children: Children<G>, lable: String, value: ReadSig
 #[component(inline_props)]
 pub fn MenuButtons<G: Html>(raw_visable: Signal<bool>, menu_visable: Signal<bool>) -> View<G> {
     view! {
-        div(class="leaflet-bar leaflet-control"){
-            a (class="map-button",href="#", title="Open Menu", on:click=move |_| {
+        div(class="leaflet-bar leaflet-control map-button"){
+            a (href="#", title=(if menu_visable.get(){
+                use rust_i18n::t;t!("close-menu")
+            }else{
+                t!("open-menu")
+            }), on:click=move |_| {
                 menu_visable.set(!menu_visable.get());
                 raw_visable.set(false);
             }){"⚙"}
-            a (class="map-button",href="#", title="Open Menu", on:click=move |_| {
+            a (href="#", title=(if menu_visable.get(){
+                use rust_i18n::t;t!("close-raw")
+            }else{
+                t!("open-raw")
+            }), on:click=move |_| {
                 raw_visable.set(!raw_visable.get());
                 menu_visable.set(false);
             }){"⚛"}
+            a( href="/", title=t!("reload")){"⟳"}
         }
     }
 }

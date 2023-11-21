@@ -6,3 +6,8 @@ accuracy: Accuracy
 altitude: Altitude
 magnetic_declination: Magnetic Declination
 degree: degrees
+close-menu: Close Menu
+open-menu: Open Menu
+close-raw: Hide Raw Data
+open-raw: Show Raw Data
+reload: Reload

@@ -6,3 +6,8 @@ accuracy: Genauigkeit
 altitude: Höhe
 magnetic_declination: Magnetische Deklination
 degree: Grad
+close-menu: Einstellungen Schließen
+open-menu: Einstellungen Öffnen
+close-raw: Rohdaten verstecken
+open-raw: Rohdaten Zeigen
+reload: Neu Laden
