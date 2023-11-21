@@ -28,5 +28,12 @@ div{
 .triple-column {
     display: grid;
     grid-template-columns: auto 5em auto;
+    border: 2px solid rgba(0,0,0,0.2);
     gap: 0.5em;
+    background-color: rgba(255, 255, 255, 0.5); 
+}
+
+.map-button{
+    font-size: large;
+
 }

@@ -1,26 +1,24 @@
-use nav_types::{ECEF, WGS84};
-// You must import in each files when you wants use `t!` macro.
+mod mutex_box;
+mod position;
+mod utils;
+mod components;
 
-use position::{calc_magnetic_declination, reset};
-use rust_i18n::t;
-
-rust_i18n::i18n!("locales", fallback = "en");
+use crate::components::{MenuButtons, ValueInput, ValueOutput};
+use crate::position::{get_global_position, start_web_data};
+use crate::utils::create_stored_signal;
 use chrono::Utc;
+use git_version::git_version;
 use gloo_timers::future::TimeoutFuture;
 use leaflet::{Circle, LatLng, Map, MapOptions, TileLayer};
+use nav_types::{ECEF, WGS84};
+use position::calc_magnetic_declination;
+use rust_i18n::t;
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 use utils::get_lang_code;
 
-use crate::utils::{create_stored_signal, log_to_browser};
-mod mutex_box;
-mod position;
-mod utils;
-
-use crate::position::{get_global_position, start_web_data};
-use git_version::git_version;
-
 const GIT_VERSION: &str = git_version!(args = ["--always", "--tags"]);
+rust_i18n::i18n!("locales", fallback = "en");
 
 fn main() {
     let lang = get_lang_code();
@@ -44,6 +42,7 @@ fn App<G: Html>() -> View<G> {
     let altitude = create_signal(0.0f64);
     let magnetic_declination = create_signal(0.0f64);
     let menu_visible = create_signal(false);
+    let raw_visable = create_signal(false);
     let options = MapOptions::default();
     //options.set_max_zoom(25.0);
 
@@ -58,14 +57,9 @@ fn App<G: Html>() -> View<G> {
                             }
                         }
                         div(class="leaflet-top leaflet-right"){
-                            (if !menu_visible.get(){
+                            (if !(menu_visible.get()||raw_visable.get()){
                                 view! {
-                            div(class="leaflet-bar leaflet-control"){
-                                a (href="#", title="Open Menu", on:click=move |_| {
-                                    reset();
-                                    menu_visible.set(true);
-                                }){"O"}
-                            }
+                                    MenuButtons(raw_visable=raw_visable,menu_visable=menu_visible){}
                         }
                         } else {
                             view! { }
@@ -76,23 +70,27 @@ fn App<G: Html>() -> View<G> {
                 (if menu_visible.get() {
                     view! {
                         div(class="overlay"){
-                            div(class="leaflet-bar leaflet-control"){
-                                a (href="#", title="Close Menu", on:click=move |_| {
-                                  
-                                    menu_visible.set(false);
-                             
-                                }){"X"}
-                            }
+                            MenuButtons(raw_visable=raw_visable,menu_visable=menu_visible)
                             br{}
                             div(class="triple-column"){
                         ValueInput(lable=t!("mower_width"),value=mower_width){"m"}
+                    }}}
+                } else {
+                    view! { }
+                })
+                (if raw_visable.get() {
+                    view! {
+                        div(class="overlay"){
+                            MenuButtons(raw_visable=raw_visable,menu_visable=menu_visible)
+                            br{}
+                            div(class="triple-column"){
                         ValueOutput(lable=t!("longitude"),value=*longitude){""}
                         ValueOutput(lable=t!("latitude"),value=*latitude){""}
                         ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
                         ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}}
                     }}
                 } else {
-                    view! { } 
+                    view! { }
                 })
 
 
@@ -103,7 +101,7 @@ fn App<G: Html>() -> View<G> {
     spawn_local_scoped(async move {
         let map = Map::new("map", &options).locate();
         add_tile_layer(&map);
-        
+
         //add_control(&map);
         let mut last_pos = ECEF::new(0.0f32, 0.0f32, 0.0f32);
         loop {
@@ -140,39 +138,13 @@ fn App<G: Html>() -> View<G> {
     result
 }
 
-#[derive(Props)]
-pub struct ValueInputProps<G: Html> {
-    children: Children<G>,
-    lable: String,
-    value: Signal<f64>,
-}
 
-#[derive(Props)]
-pub struct ValueOutputProps<G: Html> {
-    children: Children<G>,
-    lable: String,
-    value: ReadSignal<f64>,
-}
 
-#[component]
-fn ValueOutput<G: Html>(props: ValueOutputProps<G>) -> View<G> {
-    let children = props.children.call();
-    view! {
-            span{(props.lable)}
-            span{(((props.value.get()*100.0).round() / 100.0))}
-            div{(children)}
-    }
-}
 
-#[component]
-fn ValueInput<G: Html>(props: ValueInputProps<G>) -> View<G> {
-    let children = props.children.call();
-    view! {
-            span{(props.lable)}
-            input(bind:valueAsNumber=props.value, type="number", min="0", step="0.1",maxlength="4",size="8")
-            div{(children)}
-    }
-}
+
+
+
+
 
 fn add_tile_layer(map: &Map) {
     TileLayer::new("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").add_to(map);
