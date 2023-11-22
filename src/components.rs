@@ -1,5 +1,6 @@
 use sycamore::prelude::*;
 use rust_i18n::t;
+use web_sys::window;
 
 #[component(inline_props)]
 pub fn ValueInput<G: Html>(    
@@ -44,7 +45,9 @@ pub fn MenuButtons<G: Html>(raw_visable: Signal<bool>, menu_visable: Signal<bool
                 raw_visable.set(!raw_visable.get());
                 menu_visable.set(false);
             }){"⚛"}
-            a( href="/", title=t!("reload")){"⟳"}
+            a( href="#", title=t!("reload"),on:click=move |_| {
+                window().unwrap().location().reload().unwrap();
+            }){"⟳"}
         }
     }
 }
