@@ -1,6 +1,7 @@
 use sycamore::prelude::*;
 use rust_i18n::t;
 use web_sys::window;
+pub mod raw_data;
 
 #[component(inline_props)]
 pub fn ValueInput<G: Html>(    

@@ -11,3 +11,8 @@ open-menu: Einstellungen Öffnen
 close-raw: Rohdaten verstecken
 open-raw: Rohdaten Zeigen
 reload: Neu Laden
+acceleration east: Beschleunigung östliche Richtung
+acceleration_north: Beschleunigung Nordrichtung
+acceleration altitude: Beschleunigung in der Höhe
+speed east: Geschwindigkeit östliche Richtung
+speed_north: Geschwindigkeit Nordrichtung

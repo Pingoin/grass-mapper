@@ -11,3 +11,8 @@ open-menu: Open Menu
 close-raw: Hide Raw Data
 open-raw: Show Raw Data
 reload: Reload
+speed east: Speed Eastern Direchtion
+acceleration east: Acceleration Eastern Direction
+speed_north: Speed Northern Direchtion
+acceleration_north: Acceleration Northern Direction
+acceleration altitude: Acceleration altitude

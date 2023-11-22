@@ -3,15 +3,14 @@ mod position;
 mod utils;
 mod components;
 
-use crate::components::{MenuButtons, ValueInput, ValueOutput};
+use crate::components::raw_data::RawValues;
+use crate::components::{MenuButtons, ValueInput};
 use crate::position::{get_global_position, start_web_data};
 use crate::utils::create_stored_signal;
-use chrono::Utc;
 use git_version::git_version;
 use gloo_timers::future::TimeoutFuture;
 use leaflet::{Circle, LatLng, Map, MapOptions, TileLayer};
 use nav_types::{ECEF, WGS84};
-use position::calc_magnetic_declination;
 use rust_i18n::t;
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
@@ -35,15 +34,15 @@ fn main() {
 #[component]
 fn App<G: Html>() -> View<G> {
     start_web_data();
-    let longitude = create_signal(0.0f64);
+    
     let mower_width = create_stored_signal(String::from("mower_with"), 0.0f64);
-    let latitude = create_signal(0.0f64);
+    
     //let accuracy = create_stored_signal(String::from("accuracy"), 0.0f64);
-    let altitude = create_signal(0.0f64);
-    let magnetic_declination = create_signal(0.0f64);
+
     let menu_visible = create_signal(false);
     let raw_visable = create_signal(false);
     let options = MapOptions::default();
+    
     //options.set_max_zoom(25.0);
 
     let result = view! {
@@ -80,15 +79,8 @@ fn App<G: Html>() -> View<G> {
                 })
                 (if raw_visable.get() {
                     view! {
-                        div(class="overlay"){
-                            MenuButtons(raw_visable=raw_visable,menu_visable=menu_visible)
-                            br{}
-                            div(class="triple-column"){
-                        ValueOutput(lable=t!("longitude"),value=*longitude){""}
-                        ValueOutput(lable=t!("latitude"),value=*latitude){""}
-                        ValueOutput(lable=t!("altitude"),value=*altitude){"m"}
-                        ValueOutput(lable=t!("magnetic_declination"),value=*magnetic_declination){(t!("degree"))}}
-                    }}
+                        RawValues(raw_visable=raw_visable,menu_visable=menu_visible)
+                    }
                 } else {
                     view! { }
                 })
@@ -107,11 +99,6 @@ fn App<G: Html>() -> View<G> {
         loop {
             if let Some(pos) = get_global_position() {
                 let wgs = WGS84::from(pos);
-
-                longitude.set(wgs.longitude_degrees() as f64);
-                latitude.set(wgs.latitude_degrees() as f64);
-                altitude.set(wgs.altitude() as f64);
-
                 if pos.distance(&last_pos) > 5.0 {
                     map.set_view(
                         &LatLng::new(
@@ -128,8 +115,7 @@ fn App<G: Html>() -> View<G> {
                     );
                     last_pos = pos;
                 }
-                let mag = calc_magnetic_declination(wgs, Utc::now().naive_utc());
-                magnetic_declination.set(mag);
+
             };
             TimeoutFuture::new(1000).await;
         }
