@@ -1,12 +1,18 @@
-use crate::mutex_box::MutexBox;
+use crate::{mutex_box::MutexBox, utils::log_to_browser};
 use chrono::{Datelike, NaiveDateTime, Timelike, Utc};
 use libgeomag::{DateTime, GeodeticLocation, ModelExt, IGRF, WMM};
-use nalgebra::{Vector2, Vector3};
+use nalgebra::{Vector2, Vector3, Matrix3, Rotation3};
 use nav_types::{ECEF, WGS84};
-use wasm_bindgen::{closure::Closure, JsCast};
-use web_sys::{window, Position};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::{self, closure::Closure, JsCast};
+use web_sys::{window, DeviceMotionEvent, DeviceOrientationEvent, Geolocation, Position, Window};
 mod position_fusion;
 use position_fusion::PositionFusion;
+
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
 
 static POSITION_FUSION: MutexBox<PositionFusion> = MutexBox::new_inited(PositionFusion::new());
 static RAW_VALUES: MutexBox<RawValues> = MutexBox::new_inited(RawValues::new());
@@ -14,54 +20,101 @@ static RAW_VALUES: MutexBox<RawValues> = MutexBox::new_inited(RawValues::new());
 pub fn start_web_data() {
     if let Some(win) = window() {
         if let Ok(geoloc) = win.navigator().geolocation() {
-            let cb: Closure<dyn Fn(Position)> = Closure::new(move |data: Position| {
-                let coords = data.coords();
-                let speed = coords.speed();
-                let heading = coords.heading();
+            get_geoloc(&geoloc);
+        }
+        get_acceleation(&win);
+        get_device_orientation(&win);
+    }
+}
 
-                let wgs = WGS84::from_degrees_and_meters(
-                    coords.latitude() as f32,
-                    coords.longitude() as f32,
-                    if let Some(alt) = coords.altitude() {
-                        alt
-                    } else {
-                        0.0
-                    } as f32,
-                );
-
-                let magnetic_declination = calc_magnetic_declination(wgs, Utc::now().naive_utc());
-
-                let coords = ECEF::from(wgs);
-                let mut velocity: Option<Vector2<f32>> = None;
-                if let (Some(speed), Some(heading)) = (speed, heading) {
-                    let speed_n = speed * heading.to_radians().cos();
-                    let speed_e = speed * heading.to_radians().sin();
-                    velocity = Some(Vector2::new(speed_e as f32, speed_n as f32));
-                }
+fn get_acceleation(win: &Window) {
+    let cb: Closure<dyn Fn(DeviceMotionEvent)> = Closure::new(move |data: DeviceMotionEvent| {
+        if let Some(acc) = data.acceleration_including_gravity() {
+            //log_to_browser("ACC-Data".to_string());
+            if let (Some(x), Some(y), Some(z)) = (acc.x(), acc.y(), acc.z()) {
+                let acc_vec = Vector3::new(x as f32, y as f32, z as f32);
 
                 RAW_VALUES.open_locked(
                     |raw| {
-                        raw.position = Some(coords.clone());
-                        raw.magnetic_declination = magnetic_declination;
-
-                        if let Some(vel) = velocity {
-                            raw.velocity = vel.clone();
-                        }
+                        raw.acceleration = acc_vec;
                     },
                     (),
                 );
-
-                POSITION_FUSION.open_locked(
-                    |pos| {
-                        pos.update_global_position(coords, velocity);
-                    },
-                    (),
-                );
-            });
-            if let Ok(_pos) = geoloc.watch_position(cb.as_ref().unchecked_ref()) {}
-            cb.forget();
+                //log_to_browser(format!("acc: {}/{}/{}", x, y, z));
+            }
         }
-    }
+    });
+    let _bla = win.add_event_listener_with_callback("devicemotion", cb.as_ref().unchecked_ref());
+    cb.forget();
+}
+
+fn get_geoloc(geoloc: &Geolocation) {
+    let cb: Closure<dyn Fn(Position)> = Closure::new(move |data: Position| {
+        let coords = data.coords();
+        let speed = coords.speed();
+        let heading = coords.heading();
+        let wgs = WGS84::from_degrees_and_meters(
+            coords.latitude() as f32,
+            coords.longitude() as f32,
+            if let Some(alt) = coords.altitude() {
+                alt
+            } else {
+                0.0
+            } as f32,
+        );
+
+        let magnetic_declination = calc_magnetic_declination(wgs, Utc::now().naive_utc());
+        log_to_browser("Pos-Data".to_string());
+        let coords = ECEF::from(wgs);
+        let mut velocity: Option<Vector2<f32>> = None;
+        if let (Some(speed), Some(heading)) = (speed, heading) {
+            let speed_n = speed * heading.to_radians().cos();
+            let speed_e = speed * heading.to_radians().sin();
+            log_to_browser(format!("E/N-Vel: {}/{}", speed_e, speed_n));
+            velocity = Some(Vector2::new(speed_e as f32, speed_n as f32));
+        }
+        //alert(format!("long: {}\nlat: {}\nspeed: {:?}\nheading: {:?}",wgs.longitude_degrees(),wgs.latitude_degrees(),speed,heading).as_str());
+        RAW_VALUES.open_locked(
+            |raw| {
+                raw.position = Some(coords.clone());
+                raw.magnetic_declination = magnetic_declination;
+
+                if let Some(vel) = velocity {
+                    raw.velocity = vel.clone();
+                }
+            },
+            (),
+        );
+
+        POSITION_FUSION.open_locked(
+            |pos| {
+                pos.update_global_position(coords, velocity);
+            },
+            (),
+        );
+    });
+    if let Ok(_pos) = geoloc.watch_position(cb.as_ref().unchecked_ref()) {}
+    cb.forget();
+}
+
+fn get_device_orientation(win: &Window) {
+    let cb: Closure<dyn Fn(DeviceOrientationEvent)> =
+        Closure::new(move |data: DeviceOrientationEvent| {
+            if let (Some(x), Some(y), Some(z)) = (data.alpha(), data.beta(), data.gamma()) {
+                let orientation_vec = Vector3::new(x as f32, y as f32, z as f32);
+
+                RAW_VALUES.open_locked(
+                    |raw| {
+                        raw.orientation = orientation_vec;
+                    },
+                    (),
+                );
+                log_to_browser(format!("ori: {}/{}/{}", x, y, z));
+            }
+        });
+    let _bla =
+        win.add_event_listener_with_callback("deviceorientation", cb.as_ref().unchecked_ref());
+    cb.forget();
 }
 
 pub fn get_global_position() -> Option<ECEF<f32>> {
@@ -100,7 +153,7 @@ pub fn get_raw_data() -> RawValues {
     RAW_VALUES.open_locked(|raw| raw.clone(), RawValues::new())
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct RawValues {
     pub position: Option<ECEF<f32>>,
     pub velocity: Vector2<f32>,
@@ -118,5 +171,31 @@ impl RawValues {
             acceleration: Vector3::new(0.0, 0.0, 0.0),
             magnetic_declination: 0.0,
         }
+    }
+
+    pub fn get_acceleration(self)->Vector3<f32> {
+        let alpha=self.orientation[0];
+        let beta=self.orientation[1];
+        let gamma=self.orientation[2];
+
+        let declination= self.magnetic_declination;
+        let a_device=self.acceleration;
+
+        // Define the rotation matrices for each axis
+        let r_z = Rotation3::from_euler_angles(0.0, 0.0, alpha - declination);
+
+        // Subtract the declination from alpha
+        let r_x = Rotation3::from_euler_angles(beta, 0.0, 0.0);
+        let r_y = Rotation3::from_euler_angles(0.0, gamma, 0.0);
+
+        // Compute the rotation matrix that transforms device coordinates to world coordinates
+        let r = r_z * r_x * r_y;
+
+        // Compute the acceleration vector in world coordinates
+        let a_world = r * a_device;
+
+        // Extract the north-south and east-west components of the acceleration vector
+
+        a_world
     }
 }

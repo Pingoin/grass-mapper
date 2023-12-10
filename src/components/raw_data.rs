@@ -5,7 +5,7 @@ use sycamore::{futures::spawn_local_scoped, prelude::*};
 
 use crate::{
     components::{MenuButtons, ValueOutput},
-    position::get_raw_data,
+    position::get_raw_data, utils::log_to_browser,
 };
 
 #[component(inline_props)]
@@ -35,6 +35,12 @@ pub fn RawValues<G: Html>(raw_visable: Signal<bool>, menu_visable: Signal<bool>)
 
             speed_e.set(data.velocity[0] as f64);
             speed_n.set(data.velocity[1] as f64);
+
+            let acc=data.get_acceleration();
+            acc_a.set(acc[2] as f64);
+            acc_n.set(acc[0] as f64);
+            acc_e.set(acc[1] as f64);
+            log_to_browser(format!("Raw-Vals: {:?}",data));
             TimeoutFuture::new(1000).await;
         }
     });
