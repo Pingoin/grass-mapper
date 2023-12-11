@@ -31,7 +31,7 @@ pub fn RawValues<G: Html>(raw_visable: Signal<bool>, menu_visable: Signal<bool>)
                 longitude.set(wgs.longitude_degrees() as f64);
                 altitude.set(wgs.altitude() as f64);
             }
-            magnetic_declination.set(data.magnetic_declination as f64);
+            magnetic_declination.set(data.magnetic_declination.to_degrees() as f64);
 
             speed_e.set(data.velocity[0] as f64);
             speed_n.set(data.velocity[1] as f64);

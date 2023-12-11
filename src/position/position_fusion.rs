@@ -1,12 +1,15 @@
 use eskf::{Builder, ESKF};
-use nalgebra::{Matrix2, Point3, Vector2};
+use nalgebra::{Matrix2, Point3, Vector2, Vector3};
 use nav_types::{ECEF, ENU};
+use std::time::Instant;
 
 use crate::utils::log_to_browser;
 
 pub(super) struct PositionFusion {
     reference_position: Option<ECEF<f32>>,
     kalman_filter: Option<ESKF>,
+    last_prediction:Option<Instant>,
+
 }
 
 impl PositionFusion {
@@ -14,6 +17,7 @@ impl PositionFusion {
         PositionFusion {
             reference_position: None,
             kalman_filter: None,
+            last_prediction: None,
         }
     }
 
@@ -56,6 +60,17 @@ impl PositionFusion {
             None
         }
     }
+
+    pub(super) fn predict( &mut self,acceleration:Vector3<f32>,rotation:Vector3<f32>){
+
+        if let (Some(mut kalman),Some(last_prediction) )= (self.kalman_filter,self.last_prediction)  {
+            let delta=Instant::now()- last_prediction;
+            self.last_prediction=Some(Instant::now());
+            kalman.predict(acceleration, rotation, delta)
+        }
+    }
+
+
 }
 
 impl Default for PositionFusion {

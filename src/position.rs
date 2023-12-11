@@ -1,7 +1,7 @@
 use crate::{mutex_box::MutexBox, utils::log_to_browser};
 use chrono::{Datelike, NaiveDateTime, Timelike, Utc};
 use libgeomag::{DateTime, GeodeticLocation, ModelExt, IGRF, WMM};
-use nalgebra::{Vector2, Vector3, Matrix3, Rotation3};
+use nalgebra::{Vector2, Vector3, Rotation3};
 use nav_types::{ECEF, WGS84};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{self, closure::Closure, JsCast};
@@ -37,9 +37,16 @@ fn get_acceleation(win: &Window) {
                 RAW_VALUES.open_locked(
                     |raw| {
                         raw.acceleration = acc_vec;
+                        POSITION_FUSION.open_locked(
+                            |pos| {
+                                pos.predict(raw.acceleration, raw.orientation)
+                            },
+                            (),
+                        );
                     },
                     (),
                 );
+
                 //log_to_browser(format!("acc: {}/{}/{}", x, y, z));
             }
         }
@@ -64,13 +71,13 @@ fn get_geoloc(geoloc: &Geolocation) {
         );
 
         let magnetic_declination = calc_magnetic_declination(wgs, Utc::now().naive_utc());
-        log_to_browser("Pos-Data".to_string());
+        //log_to_browser("Pos-Data".to_string());
         let coords = ECEF::from(wgs);
         let mut velocity: Option<Vector2<f32>> = None;
         if let (Some(speed), Some(heading)) = (speed, heading) {
             let speed_n = speed * heading.to_radians().cos();
             let speed_e = speed * heading.to_radians().sin();
-            log_to_browser(format!("E/N-Vel: {}/{}", speed_e, speed_n));
+            //log_to_browser(format!("E/N-Vel: {}/{}", speed_e, speed_n));
             velocity = Some(Vector2::new(speed_e as f32, speed_n as f32));
         }
         //alert(format!("long: {}\nlat: {}\nspeed: {:?}\nheading: {:?}",wgs.longitude_degrees(),wgs.latitude_degrees(),speed,heading).as_str());
@@ -101,15 +108,22 @@ fn get_device_orientation(win: &Window) {
     let cb: Closure<dyn Fn(DeviceOrientationEvent)> =
         Closure::new(move |data: DeviceOrientationEvent| {
             if let (Some(x), Some(y), Some(z)) = (data.alpha(), data.beta(), data.gamma()) {
-                let orientation_vec = Vector3::new(x as f32, y as f32, z as f32);
+                let mut orientation_vec = Vector3::new(x.to_radians() as f32 , y.to_radians() as f32, z.to_radians() as f32);
 
                 RAW_VALUES.open_locked(
                     |raw| {
+                        orientation_vec[0]=orientation_vec[0]-raw.magnetic_declination;
                         raw.orientation = orientation_vec;
+                        POSITION_FUSION.open_locked(
+                            |pos| {
+                                pos.predict(raw.acceleration, raw.orientation)
+                            },
+                            (),
+                        );
                     },
                     (),
                 );
-                log_to_browser(format!("ori: {}/{}/{}", x, y, z));
+                //log_to_browser(format!("ori: {}/{}/{}", x, y, z));
             }
         });
     let _bla =
@@ -146,7 +160,7 @@ pub fn calc_magnetic_declination(pos: WGS84<f32>, time: NaiveDateTime) -> f32 {
     let m1 = wmm.single(l).d.to_degrees();
     let m2 = igrf.single(l).d.to_degrees();
 
-    ((m1 + m2) / 2.0) as f32
+    ((m1 + m2) / 2.0).to_radians() as f32
 }
 
 pub fn get_raw_data() -> RawValues {
@@ -182,7 +196,7 @@ impl RawValues {
         let a_device=self.acceleration;
 
         // Define the rotation matrices for each axis
-        let r_z = Rotation3::from_euler_angles(0.0, 0.0, alpha - declination);
+        let r_z = Rotation3::from_euler_angles(0.0, 0.0, alpha);
 
         // Subtract the declination from alpha
         let r_x = Rotation3::from_euler_angles(beta, 0.0, 0.0);
